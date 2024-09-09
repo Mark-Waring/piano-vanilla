@@ -5,24 +5,24 @@
 
 .piano {
     position: relative;
-    height: 22%;
+    height: 200px;
 }
 
 .key {
     border: 1px solid #000;
-    border-radius: 5px;
+    border-radius: 5%;
     cursor: pointer;
     position: absolute;
 }
 
 .white {
-    width: 4%;
+    width: 4.5%;
     height: 100%;
     background-color: #fff;
 }
 
 .black {
-    width: 2%;
+    width: 2.25%;
     height: 55%;
     background-color: #000;
     z-index: 1;

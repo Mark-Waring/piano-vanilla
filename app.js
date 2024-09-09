@@ -65,7 +65,7 @@ function createPiano() {
   const piano = document.getElementById("piano");
   piano.style.boxSizing = "border-box";
   const keys = Object.keys(frequencies);
-  let whiteKeyWidth = 60;
+  let whiteKeyWidth = 4.5;
   let whiteKeyCount = 0;
 
   keys.forEach((note) => {
@@ -75,13 +75,13 @@ function createPiano() {
     key.dataset.note = note;
 
     if (isWhite) {
-      key.style.left = `${whiteKeyCount * whiteKeyWidth}px`;
+      key.style.left = `${whiteKeyCount * whiteKeyWidth}%`;
       whiteKeyCount++;
     } else {
-      const blackKeyOffset = whiteKeyWidth / 1.333;
+      const blackKeyOffset = (whiteKeyWidth + 2) / 2;
       key.style.left = `${
         (whiteKeyCount - 1) * whiteKeyWidth + blackKeyOffset
-      }px`;
+      }%`;
     }
 
     key.addEventListener("mousedown", () => playTone(frequencies[note]));
