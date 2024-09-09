@@ -5,7 +5,7 @@
 
 .piano {
     position: relative;
-    height: 200px;
+    height: 22%;
 }
 
 .key {
@@ -16,14 +16,14 @@
 }
 
 .white {
-    width: 60px;
-    height: 200px;
+    width: 4%;
+    height: 100%;
     background-color: #fff;
 }
 
 .black {
-    width: 30px;
-    height: 120px;
+    width: 2%;
+    height: 55%;
     background-color: #000;
     z-index: 1;
     position: absolute;

@@ -123,7 +123,7 @@ async function getMicrophoneFrequency() {
     const source = audioContext.createMediaStreamSource(stream);
     source.connect(analyser);
 
-    analyser.fftSize = 32768;
+    analyser.fftSize = 16384;
     const bufferLength = analyser.frequencyBinCount;
     const frequencyData = new Float32Array(bufferLength);
     const timeDomainData = new Uint8Array(bufferLength);
