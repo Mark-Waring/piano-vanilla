@@ -1,6 +1,5 @@
 #root {
     width: 100%;
-    height: 100vh;
 }
 
 .piano {
@@ -31,5 +30,5 @@
 }
 
 .key:active {
-    background-color: #ccc;
+    background-color: #ccc !important;
 }
