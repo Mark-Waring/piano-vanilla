@@ -1,0 +1,35 @@
+#root {
+    width: 100%;
+    height: 100vh;
+}
+
+.piano {
+    position: relative;
+    height: 200px;
+}
+
+.key {
+    border: 1px solid #000;
+    border-radius: 5px;
+    cursor: pointer;
+    position: absolute;
+}
+
+.white {
+    width: 60px;
+    height: 200px;
+    background-color: #fff;
+}
+
+.black {
+    width: 30px;
+    height: 120px;
+    background-color: #000;
+    z-index: 1;
+    position: absolute;
+    top: 0;
+}
+
+.key:active {
+    background-color: #ccc;
+}
