@@ -84,32 +84,27 @@ function createPiano() {
   });
 }
 
+let audioContext = null;
 function playTone(frequency) {
-  let playerAudioContext = new (window.AudioContext ||
-    window.webkitAudioContext)();
-  if (playerAudioContext.state === "suspended") {
-    playerAudioContext.resume();
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
   }
 
-  const oscillator = playerAudioContext.createOscillator();
-  const gainNode = playerAudioContext.createGain();
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
 
   oscillator.type = "triangle";
   oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
 
-  gainNode.connect(playerAudioContext.destination);
+  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
 
-  oscillator.frequency.setValueAtTime(
-    frequency,
-    playerAudioContext.currentTime
-  );
-
-  gainNode.gain.setValueAtTime(0, playerAudioContext.currentTime);
-  gainNode.gain.linearRampToValueAtTime(
-    1,
-    playerAudioContext.currentTime + 0.01
-  );
-  gainNode.gain.linearRampToValueAtTime(0, playerAudioContext.currentTime + 1);
+  gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+  gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.01);
+  gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 1);
 
   oscillator.start();
   const toneDuration = 800;
@@ -118,28 +113,17 @@ function playTone(frequency) {
     oscillator.stop();
     oscillator.disconnect();
     gainNode.disconnect();
-    if (playerAudioContext) {
-      playerAudioContext
-        .close()
-        .then(() => {
-          playerAudioContext = null;
-        })
-        .catch((err) => {
-          console.error("Error closing audio context:", err);
-        });
-    }
   }, toneDuration);
 }
 
 let microphoneStream = null;
 let analyserNode = null;
-let listenerAudioContext = null;
 
 async function beginListening() {
-  listenerAudioContext =
-    listenerAudioContext ??
+  audioContext =
+    audioContext ??
     new (window.AudioContext || window.webkitAudioContext)();
-  analyserNode = listenerAudioContext.createAnalyser();
+  analyserNode = audioContext.createAnalyser();
   const fftSizes = [
     32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
   ];
@@ -149,7 +133,7 @@ async function beginListening() {
     audio: true,
   });
 
-  const source = listenerAudioContext.createMediaStreamSource(microphoneStream);
+  const source = audioContext.createMediaStreamSource(microphoneStream);
   source.connect(analyserNode);
 
   getMicrophoneFrequency();
@@ -161,16 +145,6 @@ async function getMicrophoneFrequency() {
     microphoneStream = null;
     analyserNode = null;
     activeVoiceFreq = null;
-    if (listenerAudioContext) {
-      listenerAudioContext
-        .close()
-        .then(() => {
-          listenerAudioContext = null;
-        })
-        .catch((err) => {
-          console.error("Error closing audio context:", err);
-        });
-    }
     return;
   }
   try {
@@ -198,7 +172,7 @@ async function getMicrophoneFrequency() {
       }
     }
 
-    const nyquist = listenerAudioContext.sampleRate / 2;
+    const nyquist = audioContext.sampleRate / 2;
     const freq = (maxIndex / bufferLength) * nyquist;
     const avgAmplitude =
       timeDomainData.reduce((sum, val) => sum + Math.abs(val - 128), 0) /
