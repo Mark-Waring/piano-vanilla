@@ -65,7 +65,7 @@ function createPiano() {
   let whiteKeyCount = 0;
 
   keys.forEach((note) => {
-    const key = document.createElement("button");
+    const key = document.createElement("div");
     const isWhite = !note.includes("#");
     key.className = `key ${!isWhite ? "black" : "white"}`;
     key.dataset.note = note;
@@ -76,13 +76,7 @@ function createPiano() {
     } else {
       let blackKeyOffset = (whiteKeyWidth + 2) / 2;
       let baseLeft = (whiteKeyCount - 1) * whiteKeyWidth + blackKeyOffset;
-
-      // Check if the screen width is less than or equal to 360px
-      if (window.matchMedia("(max-width: 360px)").matches) {
-        key.style.left = `${baseLeft - 1}%`; // Reduce by 2 percentage points
-      } else {
-        key.style.left = `${baseLeft}%`; // Normal left value
-      }
+      key.style.left = `calc(${baseLeft}% + 1px)`;
     }
     key.id = note.toString();
     key.addEventListener("click", () => playTone(frequencies[note]));
