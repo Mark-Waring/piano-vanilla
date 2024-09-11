@@ -21,7 +21,7 @@
 }
 
 .black {
-    width: 2.25%;
+    min-width: 2.25%;
     height: 55%;
     background-color: #000;
     z-index: 1;
@@ -31,4 +31,13 @@
 
 .key:active {
     background-color: #ccc !important;
+}
+
+@media screen and (max-width: 360px) {
+    .black {
+        border-left: 1px solid white;
+        border-right: 1px solid white;
+        border-radius: 4px;
+    }
+
 }

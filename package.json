@@ -1,0 +1,27 @@
+{
+  "name": "piano-vanilla",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mark-Waring/piano-vanilla.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Mark-Waring/piano-vanilla/issues"
+  },
+  "homepage": "https://github.com/Mark-Waring/piano-vanilla#readme",
+  "dependencies": {
+    "pitchy": "^4.1.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.3"
+  }
+}
