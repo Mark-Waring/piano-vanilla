@@ -38,31 +38,24 @@ const frequencies = {
   C5: 523.25,
 };
 
-let audioContext = null;
 let activeVoiceFreq = null;
-let microphoneStream = null;
 
-function highlightKey(note) {
+let isListening = false;
+
+function handleKeyPress(note) {
   const activeKey = document.querySelector(".key.active");
   const newActiveKey = document.querySelector(`.key[data-note='${note}']`);
-  if (newActiveKey !== activeKey) {
-    if (activeKey) {
-      activeKey.classList.remove("active");
-      activeKey.style.backgroundColor = activeKey.classList.contains("black")
-        ? "black"
-        : "white";
-    }
-    if (newActiveKey) {
-      newActiveKey.classList.add("active");
-      newActiveKey.style.backgroundColor = "#ccc";
-      newActiveKey.click();
-    }
+  if (activeKey) {
+    activeKey.classList.remove("active");
+    activeKey.style.backgroundColor = activeKey.classList.contains("black")
+      ? "black"
+      : "white";
   }
-}
-
-function updateActiveVoiceFreq(newFreq) {
-  activeVoiceFreq = newFreq;
-  highlightKey(newFreq);
+  if (newActiveKey) {
+    newActiveKey.classList.add("active");
+    newActiveKey.style.backgroundColor = "#ccc";
+    newActiveKey.click();
+  }
 }
 
 function createPiano() {
@@ -81,10 +74,15 @@ function createPiano() {
       key.style.left = `${whiteKeyCount * whiteKeyWidth}%`;
       whiteKeyCount++;
     } else {
-      const blackKeyOffset = (whiteKeyWidth + 2) / 2;
-      key.style.left = `${
-        (whiteKeyCount - 1) * whiteKeyWidth + blackKeyOffset
-      }%`;
+      let blackKeyOffset = (whiteKeyWidth + 2) / 2;
+      let baseLeft = (whiteKeyCount - 1) * whiteKeyWidth + blackKeyOffset;
+
+      // Check if the screen width is less than or equal to 360px
+      if (window.matchMedia("(max-width: 360px)").matches) {
+        key.style.left = `${baseLeft - 1}%`; // Reduce by 2 percentage points
+      } else {
+        key.style.left = `${baseLeft}%`; // Normal left value
+      }
     }
     key.id = note.toString();
     key.addEventListener("click", () => playTone(frequencies[note]));
@@ -93,107 +91,154 @@ function createPiano() {
 }
 
 function playTone(frequency) {
-  if (!audioContext) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  let playerAudioContext = new (window.AudioContext ||
+    window.webkitAudioContext)();
+  if (playerAudioContext.state === "suspended") {
+    playerAudioContext.resume();
   }
 
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
+  const oscillator = playerAudioContext.createOscillator();
+  const gainNode = playerAudioContext.createGain();
 
   oscillator.type = "triangle";
-  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
   oscillator.connect(gainNode);
 
-  gainNode.connect(audioContext.destination);
-  gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-  gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.01);
-  gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 1);
+  gainNode.connect(playerAudioContext.destination);
+
+  oscillator.frequency.setValueAtTime(
+    frequency,
+    playerAudioContext.currentTime
+  );
+
+  gainNode.gain.setValueAtTime(0, playerAudioContext.currentTime);
+  gainNode.gain.linearRampToValueAtTime(
+    1,
+    playerAudioContext.currentTime + 0.01
+  );
+  gainNode.gain.linearRampToValueAtTime(0, playerAudioContext.currentTime + 1);
 
   oscillator.start();
+  const toneDuration = 800;
 
   setTimeout(() => {
     oscillator.stop();
     oscillator.disconnect();
-  }, 600);
+    gainNode.disconnect();
+    if (playerAudioContext) {
+      playerAudioContext
+        .close()
+        .then(() => {
+          playerAudioContext = null;
+        })
+        .catch((err) => {
+          console.error("Error closing audio context:", err);
+        });
+    }
+  }, toneDuration);
 }
 
-const frequencyHistory = [];
-const historyDuration = 300;
-const sampleInterval = 400; // Interval for frequency sampling
-const amplitudeThreshold = 2.5; // Lower threshold for amplitude
+let microphoneStream = null;
+let analyserNode = null;
+let listenerAudioContext = null;
+
+async function beginListening() {
+  listenerAudioContext =
+    listenerAudioContext ??
+    new (window.AudioContext || window.webkitAudioContext)();
+  analyserNode = listenerAudioContext.createAnalyser();
+  const fftSizes = [
+    32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
+  ];
+  analyserNode.fftSize = fftSizes.at(-2);
+
+  microphoneStream = await navigator.mediaDevices.getUserMedia({
+    audio: true,
+  });
+
+  const source = listenerAudioContext.createMediaStreamSource(microphoneStream);
+  source.connect(analyserNode);
+
+  getMicrophoneFrequency();
+}
 
 async function getMicrophoneFrequency() {
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const analyser = audioContext.createAnalyser();
-
+  if (!isListening) {
+    microphoneStream.getTracks().forEach((track) => track.stop());
+    microphoneStream = null;
+    analyserNode = null;
+    activeVoiceFreq = null;
+    if (listenerAudioContext) {
+      listenerAudioContext
+        .close()
+        .then(() => {
+          listenerAudioContext = null;
+        })
+        .catch((err) => {
+          console.error("Error closing audio context:", err);
+        });
+    }
+    return;
+  }
   try {
-    microphoneStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-    });
-    const source = audioContext.createMediaStreamSource(microphoneStream);
-    source.connect(analyser);
+    const frequencyHistory = [];
+    const historyDuration = 300;
 
+    const amplitudeThreshold = 2.5; // Lower threshold for amplitude
     const fftSizes = [
       32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
     ];
-    const size = fftSizes.at(-2);
-    analyser.fftSize = size;
-    const bufferLength = analyser.frequencyBinCount;
+    analyserNode.fftSize = fftSizes.at(-2);
+    const bufferLength = analyserNode.frequencyBinCount;
     const frequencyData = new Float32Array(bufferLength);
     const timeDomainData = new Uint8Array(bufferLength);
 
-    function analyzeFrequency() {
-      if (!audioContext) return;
+    analyserNode.getFloatFrequencyData(frequencyData);
+    analyserNode.getByteTimeDomainData(timeDomainData);
 
-      analyser.getFloatFrequencyData(frequencyData);
-      analyser.getByteTimeDomainData(timeDomainData);
+    let maxVal = -Infinity;
+    let maxIndex = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      if (frequencyData[i] > maxVal) {
+        maxVal = frequencyData[i];
+        maxIndex = i;
+      }
+    }
 
-      let maxVal = -Infinity;
-      let maxIndex = 0;
-      for (let i = 0; i < bufferLength; i++) {
-        if (frequencyData[i] > maxVal) {
-          maxVal = frequencyData[i];
-          maxIndex = i;
-        }
+    const nyquist = listenerAudioContext.sampleRate / 2;
+    const freq = (maxIndex / bufferLength) * nyquist;
+    const avgAmplitude =
+      timeDomainData.reduce((sum, val) => sum + Math.abs(val - 128), 0) /
+      bufferLength;
+    let newFreq = null;
+    if (avgAmplitude > amplitudeThreshold) {
+      frequencyHistory.push({ frequency: freq, timestamp: Date.now() });
+
+      const cutoffTime = Date.now() - historyDuration;
+      while (
+        frequencyHistory.length > 0 &&
+        frequencyHistory[0].timestamp < cutoffTime
+      ) {
+        frequencyHistory.shift();
       }
 
-      const nyquist = audioContext.sampleRate / 2;
-      const freq = (maxIndex / bufferLength) * nyquist;
-
-      const avgAmplitude =
-        timeDomainData.reduce((sum, val) => sum + Math.abs(val - 128), 0) /
-        bufferLength;
-
-      if (avgAmplitude > amplitudeThreshold) {
-        frequencyHistory.push({ frequency: freq, timestamp: Date.now() });
-
-        const cutoffTime = Date.now() - historyDuration;
-        while (
-          frequencyHistory.length > 0 &&
-          frequencyHistory[0].timestamp < cutoffTime
-        ) {
-          frequencyHistory.shift();
-        }
-
-        if (freq !== activeVoiceFreq && frequencyHistory.length > 0) {
-          const newMatchedFreq = detect(freq);
-          if (newMatchedFreq !== activeVoiceFreq) {
-            activeVoiceFreq = newMatchedFreq;
-          }
+      if (frequencyHistory.length > 0) {
+        if (freq >= 75 && freq <= 359.6) {
+          newFreq = detect(freq);
         }
       } else {
         activeVoiceFreq = null;
       }
-
-      updateActiveVoiceFreq(activeVoiceFreq);
-
-      setTimeout(analyzeFrequency, sampleInterval);
     }
 
-    analyzeFrequency();
+    if (newFreq !== activeVoiceFreq) {
+      activeVoiceFreq = newFreq;
+      handleKeyPress(activeVoiceFreq);
+    }
   } catch (err) {
     console.error("Error accessing microphone:", err);
   }
+  const sampleInterval = 400; // Interval for frequency sampling
+  setTimeout(getMicrophoneFrequency, sampleInterval);
 }
 
 function detect(freq) {
@@ -211,33 +256,16 @@ function detect(freq) {
   }
 }
 
-function stopListening() {
-  if (microphoneStream) {
-    microphoneStream.getTracks().forEach((track) => track.stop()); // Stop all tracks
-    microphoneStream = null; // Clear the microphoneStream reference
-  }
-
-  if (audioContext) {
-    audioContext
-      .close()
-      .then(() => {
-        audioContext = null; // Clear the audioContext reference
-      })
-      .catch((err) => {
-        console.error("Error closing audio context:", err);
-      });
-  }
-}
-
 const listenButton = document.getElementById("listenButton");
 
 listenButton.addEventListener("mousedown", () => {
-  if (listenButton.textContent === "Listen") {
+  if (!isListening) {
+    isListening = true;
     listenButton.textContent = "Stop";
-    getMicrophoneFrequency(); // Start listening
+    beginListening();
   } else {
     listenButton.textContent = "Listen";
-    stopListening(); // Stop listening
+    isListening = false;
   }
 });
 

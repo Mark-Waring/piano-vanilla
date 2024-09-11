@@ -5,6 +5,7 @@
 .piano {
     position: relative;
     height: 200px;
+    max-width: 550px;
 }
 
 .key {
@@ -21,7 +22,6 @@
 }
 
 .black {
-    width: 2.25%;
     height: 55%;
     background-color: #000;
     z-index: 1;
@@ -31,4 +31,13 @@
 
 .key:active {
     background-color: #ccc !important;
+}
+
+@media screen and (max-width: 360px) {
+    .black {
+        border-left: 2px solid white;
+        border-right: 2px solid white;
+        border-radius: 6px;
+        width: 10px;
+    }
 }
