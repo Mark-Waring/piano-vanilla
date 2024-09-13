@@ -40,9 +40,33 @@ const frequencies = {
   C5: 523.25,
 };
 
+const scales = {
+  C: ['C', 'D', 'E', 'F', 'G', 'A', 'B'],
+  'C#': ['C#', 'D#', 'F', 'F#', 'G#', 'A#', 'C'],
+  D: ['D', 'E', 'F#', 'G', 'A', 'B', 'C#'],
+  'D#': ['D#', 'F', 'G', 'G#', 'A#', 'C', 'D'],
+  E: ['E', 'F#', 'G#', 'A', 'B', 'C#', 'D#'],
+  F: ['F', 'G', 'A', 'A#', 'C', 'D', 'E'],
+  'F#': ['F#', 'G#', 'A#', 'B', 'C#', 'D#', 'F'],
+  G: ['G', 'A', 'B', 'C', 'D', 'E', 'F#'],
+  'G#': ['G#', 'A#', 'C', 'C#', 'D#', 'F', 'G'],
+  A: ['A', 'B', 'C#', 'D', 'E', 'F#', 'G#'],
+  'A#': ['A#', 'C', 'D', 'D#', 'F', 'G', 'A'],
+  B: ['B', 'C#', 'D#', 'E', 'F#', 'G#', 'A#'],
+};
+
 let activeVoiceFreq = null;
 let microphoneStream = null;
 let isListening = false;
+let selectedKey = null;
+const keysSelect = document.querySelectorAll('input[name="key-select"]')
+keysSelect.forEach(radio => {
+  radio.addEventListener('change', (event) => {
+    selectedKey = event.target.value;
+    console.log('Selected key:', selectedKey);
+  });
+});
+
 
 function handleKeyPress(note) {
   const activeKey = document.querySelector(".key.active");
@@ -65,43 +89,53 @@ function createPiano() {
   const keys = Object.keys(frequencies);
   let whiteKeyWidth = 4.5;
   let whiteKeyCount = 0;
+  let totalWhiteKeyWidth = 0;
 
   keys.forEach((note) => {
-    const key = document.createElement("button");
+    const key = document.createElement("div");
     const isWhite = !note.includes("#");
     key.className = `key ${!isWhite ? "black" : "white"}`;
     key.dataset.note = note;
 
     if (isWhite) {
-      key.style.left = `${whiteKeyCount * whiteKeyWidth}%`;
+      totalWhiteKeyWidth += whiteKeyWidth
+      key.style.left = `calc(${whiteKeyCount * whiteKeyWidth}% - ${whiteKeyCount}px)`;
       whiteKeyCount++;
     } else {
-      let blackKeyOffset = (whiteKeyWidth + 2) / 2;
-      if (window.matchMedia("(max-width: 350px)").matches) {
-        blackKeyOffset -= 1;
-      }
-      key.style.left = `${
-        (whiteKeyCount - 1) * whiteKeyWidth + blackKeyOffset
-      }%`;
+      const blackLeft = totalWhiteKeyWidth - (whiteKeyWidth / 2)
+      key.style.left = `calc(${blackLeft + 1}% - ${whiteKeyCount}px)`;
     }
     key.id = note.toString();
-    key.addEventListener("click", () => playTone(frequencies[note]));
+    key.addEventListener("mousedown", () => playTone(frequencies[note]));
+    key.addEventListener("touchstart", () => playTone(frequencies[note]));
     piano.appendChild(key);
   });
 }
 
-let audioContext = null; // Duration in milliseconds
+let audioContext = null;
+let oscillator = null;
+let isStarting = false;
+let gainNode = null;
+let analyserNode = null;
+let detector = null;
+let audioInput = null;
 
-function playTone(frequency) {
+function initAudioContext() {
   if (!audioContext) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
   }
   if (audioContext.state === "suspended") {
     audioContext.resume();
   }
+}
 
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
+function playTone(frequency) {
+  initAudioContext()
+  if (!oscillator) {
+    oscillator = oscillator ?? audioContext.createOscillator();
+    isStarting = true;
+  }
+  gainNode =  audioContext.createGain();
 
   oscillator.type = "triangle";
   oscillator.connect(gainNode);
@@ -113,28 +147,52 @@ function playTone(frequency) {
   gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.01);
   gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 1);
 
-  oscillator.start();
-  const toneDuration = 800;
+  if (isStarting) {
+    oscillator.start();
+    isStarting = false;
+  }
 
-  setTimeout(() => {
+  startOrResetTimeout()
+}
+
+function disconnect() {
+  console.log("disconnecting")
+  if (oscillator) {
+    console.log(156)
     oscillator.stop();
     oscillator.disconnect();
     gainNode.disconnect();
-  }, toneDuration);
+    oscillator = null;
+    gainNode = null;
+    isStarting = false;
+  }
+  
+  if (isListening) {
+    console.log(166)
+    isListening = false
+    analyserNode = null;
+    detector = null;
+    audioInput = null;
+  }
 }
 
-let analyserNode = null;
-let detector = null;
-let audioInput = null;
+let timeoutId;
+function startOrResetTimeout() {
+  console.log("re-entering timeout")
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+  }
+
+  timeoutId = setTimeout(() => {
+    disconnect()
+  }, 30000)
+}
 
 async function beginListening() {
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  if (!isListening) return;
+
+  initAudioContext()
   analyserNode = audioContext.createAnalyser();
-  const fftSizes = [
-    32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
-  ];
-  const size = fftSizes.at(-2);
-  analyserNode.fftSize = size;
 
   microphoneStream = await navigator.mediaDevices.getUserMedia({
     audio: true,
@@ -145,20 +203,22 @@ async function beginListening() {
 
   detector = PitchDetector.forFloat32Array(analyserNode.fftSize);
   detector.minVolumeDecibels = -40;
-  audioInput = new Float32Array(analyserNode.fftSize);
 
+  audioInput = new Float32Array(analyserNode.fftSize);
+  startOrResetTimeout();
   getMicrophoneFrequency();
 }
+
 
 async function getMicrophoneFrequency() {
   if (isListening) {
     analyserNode.getFloatTimeDomainData(audioInput);
     const [pitch, clarity] = detector.findPitch(
-      audioInput,
-      audioContext.sampleRate
+        audioInput,
+        audioContext.sampleRate
     );
     let newFreq = null;
-    if (clarity > 0.9) {
+    if (clarity > 0.8) {
       if (pitch >= 75 && pitch <= 359.6) {
         newFreq = detect(pitch);
       }
@@ -166,22 +226,37 @@ async function getMicrophoneFrequency() {
       newFreq = null;
     }
 
-    if (newFreq !== activeVoiceFreq) {
+    // if (newFreq !== activeVoiceFreq) {
       activeVoiceFreq = newFreq;
       handleKeyPress(activeVoiceFreq);
-    }
-
-    setTimeout(getMicrophoneFrequency, 400);
+    // }
+    setTimeout(getMicrophoneFrequency, 100);
   } else {
     microphoneStream.getTracks().forEach((track) => track.stop());
     analyserNode = null;
     detector = null;
     audioInput = null;
   }
+
+}
+
+function filterFrequenciesByKey(selectedKey) {
+  const scale = scales[selectedKey];
+
+  const filteredFrequencies = Object.keys(frequencies).reduce((acc, note) => {
+    const noteName = note.replace(/\d/, '');
+    if (scale.includes(noteName)) {
+      acc[note] = frequencies[note];
+    }
+    return acc;
+  }, {});
+
+  return filteredFrequencies;
 }
 
 function detect(freq) {
-  const freqKeys = Object.keys(frequencies);
+  const availableKeys = selectedKey ? filterFrequenciesByKey(selectedKey) : frequencies;
+  const freqKeys = Object.keys(availableKeys);
   if (!freq) {
     return null;
   } else {
@@ -201,7 +276,10 @@ listenButton.addEventListener("mousedown", () => {
   if (!isListening) {
     isListening = true;
     listenButton.textContent = "Stop";
-    beginListening(); // Start listening
+    if (oscillator) {
+      disconnect();
+    }
+    beginListening();
   } else {
     listenButton.textContent = "Listen";
     isListening = false;
