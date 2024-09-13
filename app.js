@@ -63,7 +63,6 @@ const keysSelect = document.querySelectorAll('input[name="key-select"]')
 keysSelect.forEach(radio => {
   radio.addEventListener('change', (event) => {
     selectedKey = event.target.value;
-    console.log('Selected key:', selectedKey);
   });
 });
 
@@ -156,9 +155,7 @@ function playTone(frequency) {
 }
 
 function disconnect() {
-  console.log("disconnecting")
   if (oscillator) {
-    console.log(156)
     oscillator.stop();
     oscillator.disconnect();
     gainNode.disconnect();
@@ -168,7 +165,6 @@ function disconnect() {
   }
   
   if (isListening) {
-    console.log(166)
     isListening = false
     analyserNode = null;
     detector = null;
@@ -178,7 +174,6 @@ function disconnect() {
 
 let timeoutId;
 function startOrResetTimeout() {
-  console.log("re-entering timeout")
   if (timeoutId) {
     clearTimeout(timeoutId);
   }
