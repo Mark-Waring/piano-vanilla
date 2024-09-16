@@ -32,5 +32,5 @@
 }
 
 .key:active {
-    background-color: #ccc !important;
+    background-color: red !important;
 }

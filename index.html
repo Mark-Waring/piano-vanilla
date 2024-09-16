@@ -1,75 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Piano App</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div id="root">
-      <div class="piano" id="piano" ></div>
-      <div style="padding-top: 10px">
+    <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<div id="root">
+    <div class="piano" id="piano"></div>
+
+    <form class="selections" style="text-align: center; padding-top: 10px; max-width: 550px">
+        Enable audio:
+        <label style="flex: 1 1 100px; margin-right: 10px;">
+            <input type="radio" name="audio-select" value="true" checked>Yes
+        </label>
+        <label style="flex: 1 1 100px; margin-right: 10px;">
+            <input type="radio" name="audio-select" value="false">No
+        </label>
+    </form>
+    <div class="selections" style="text-align: center; padding-top: 10px; max-width: 550px">
         <button id="listenButton">Listen</button>
-      </div>
-      <form style="padding-top: 10px; max-width: 550px">
-        <fieldset style="display: flex; flex-wrap: wrap; gap: 10px;">
-          <legend style="width: 100%;">Select Key:</legend>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value=""  checked> All
-          </label>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value="C"> C
-          </label>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value="C#"> C# / Db
-          </label>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value="D"> D
-          </label>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value="D#"> D# / Eb
-          </label>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value="E"> E
-          </label>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value="F"> F
-          </label>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value="F#"> F# / Gb
-          </label>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value="G"> G
-          </label>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value="G#"> G# / Ab
-          </label>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value="A"> A
-          </label>
-
-          <label style="flex: 1 1 100px; margin-right: 10px;">
-            <input type="radio" name="key-select" value="A#"> A# / Bb
-          </label>
-
-          <label style="flex: 1 1 100px;">
-            <input type="radio" name="key-select" value="B"> B
-          </label>
-        </fieldset>
-      </form>
     </div>
-    <script type="module" src="app.js"></script>
-  </body>
+    <form style="padding-top: 10px; max-width: 550px">
+        <fieldset style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <legend style="width: 100%;">Select Key:</legend>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="" checked> All
+            </label>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="C"> C
+            </label>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="C#"> C# / Db
+            </label>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="D"> D
+            </label>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="D#"> D# / Eb
+            </label>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="E"> E
+            </label>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="F"> F
+            </label>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="F#"> F# / Gb
+            </label>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="G"> G
+            </label>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="G#"> G# / Ab
+            </label>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="A"> A
+            </label>
+
+            <label style="flex: 1 1 100px; margin-right: 10px;">
+                <input type="radio" name="key-select" value="A#"> A# / Bb
+            </label>
+
+            <label style="flex: 1 1 100px;">
+                <input type="radio" name="key-select" value="B"> B
+            </label>
+        </fieldset>
+    </form>
+</div>
+<script type="module" src="app.js"></script>
+</body>
 </html>
