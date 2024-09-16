@@ -83,10 +83,14 @@ let microphoneStream = null;
 let isListening = false;
 
 let selectedKey = null;
+let availableKeys = frequencies;
+let sortedKeys = Object.keys(availableKeys);
 const keysSelect = document.querySelectorAll('input[name="key-select"]');
 keysSelect.forEach(radio => {
     radio.addEventListener('change', (event) => {
         selectedKey = event.target.value;
+        availableKeys = filterFrequenciesByKey(selectedKey);
+        sortedKeys = Object.keys(availableKeys)
     });
 });
 
@@ -97,59 +101,6 @@ enableAudioSelect.forEach(radio => {
         enabledAudio = event.target.value === "true";
     });
 });
-
-function extractOctave(note) {
-    if (!note) return null; // Ensure note is not null or undefined
-    const match = note.match(/\d+/);
-    return match ? parseInt(match[0], 10) : null;
-}
-
-function extractNoteName(note) {
-    if (!note) return ''; // Ensure note is not null or undefined
-    return note.replace(/\d/, '');
-}
-
-let consecutive = false;
-
-function handleKeyPress(note) {
-    console.log({note})
-    const activeKey = document.querySelector(".key.active");
-    const newActiveKey = document.querySelector(`.key[data-note='${note}']`);
-
-    if (newActiveKey !== activeKey || !consecutive) {
-
-        if (activeKey) {
-            activeKey.classList.remove("active");
-            activeKey.style.backgroundColor = activeKey.classList.contains("black")
-                ? "black"
-                : "white";
-        }
-
-        if (newActiveKey) {
-            newActiveKey.classList.add("active");
-            newActiveKey.style.backgroundColor = "#ccc";
-            const activeNoteName = extractNoteName(activeVoiceFreq);
-            const newNoteName = extractNoteName(note);
-            const activeOctave = extractOctave(activeVoiceFreq);
-            const newOctave = extractOctave(note);
-            const isAccidentalJump = note !== activeVoiceFreq ||
-                (activeNoteName === newNoteName && (newOctave - activeOctave === 1 || newOctave - activeOctave === -1));
-
-            if (!isAccidentalJump) {
-                consecutive = true;
-                newActiveKey.style.backgroundColor = "red";
-                if (enabledAudio) {
-                    newActiveKey.click();
-                }
-
-            } else {
-                consecutive = false;
-            }
-            activeVoiceFreq = note;
-        }
-    }
-
-}
 
 function createPiano() {
     const piano = document.getElementById("piano");
@@ -202,7 +153,7 @@ function playTone(frequency) {
     oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
 
     gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.005);
+    gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.001);
     gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + .5);
 
     if (isStarting) {
@@ -252,48 +203,54 @@ function getMicrophoneFrequency() {
         let newFreq = null;
         if (clarity > 0.8) {
             if (pitch && pitch >= 70 && pitch <= 395) {
-                newFreq = detect(pitch);
+                newFreq = binaryDetect(sortedKeys, pitch, availableKeys);
             }
         } else {
             newFreq = null;
-
         }
 
-        if (newFreq || (activeVoiceFreq)) {
-            if (!newFreq) {
-                activeVoiceFreq = null;
-            }
+        if (newFreq || activeVoiceFreq) {
             handleKeyPress(newFreq);
         }
 
-        setTimeout(getMicrophoneFrequency, 75);
+        setTimeout(getMicrophoneFrequency, 50);
     }
 }
 
-function filterFrequenciesByKey(selectedKey) {
-    if (!selectedKey) {
-        return frequencies;
+function handleKeyPress(note) {
+    const activeKey = document.querySelector(".key.active");
+    const newActiveKey = document.querySelector(`.key[data-note='${note}']`);
+    if (activeKey) {
+        activeKey.classList.remove("active");
+        activeKey.style.backgroundColor = activeKey.classList.contains("black")
+            ? "black"
+            : "white";
     }
-    const scale = scales[selectedKey];
+    if (newActiveKey) {
+        const activeNoteName = extractNoteName(activeVoiceFreq);
+        const newNoteName = extractNoteName(note);
+        const activeOctave = extractOctave(activeVoiceFreq);
+        const newOctave = extractOctave(note);
+        const isAccidentalJump = note !== activeVoiceFreq ||
+            (activeNoteName === newNoteName && (newOctave - activeOctave === 1));
+        newActiveKey.classList.add("active");
+        newActiveKey.style.backgroundColor = "#ccc";
+        if (!isAccidentalJump) {
+            newActiveKey.style.backgroundColor = "red";
+            if (enabledAudio) {
+                newActiveKey.click();
+            }
 
-    return Object.keys(frequencies).reduce((acc, note) => {
-        const noteName = note.replace(/\d/, '');
-        if (scale.includes(noteName)) {
-            acc[note] = frequencies[note];
         }
-        return acc;
-    }, {});
+
+    }
+    activeVoiceFreq = note;
 }
 
-function detect(freq) {
-    const availableKeys = filterFrequenciesByKey(selectedKey);
-    const sortedKeys = Object.keys(availableKeys);
-    return binarySearch(sortedKeys, freq, availableKeys);
-}
-
-function binarySearch(arr, target, values) {
+function binaryDetect(arr, target, values) {
     let low = 0;
     let high = arr.length - 1;
+
 
     while (low <= high) {
         const mid = Math.floor((low + high) / 2);
@@ -319,6 +276,33 @@ function binarySearch(arr, target, values) {
     return arr[low];
 }
 
+
+
+function filterFrequenciesByKey(selectedKey) {
+    if (!selectedKey) {
+        return frequencies;
+    }
+    const scale = scales[selectedKey];
+    return Object.keys(frequencies).reduce((acc, note) => {
+        const noteName = note.replace(/\d/, '');
+        if (scale.includes(noteName)) {
+            acc[note] = frequencies[note];
+        }
+        return acc;
+    }, {});
+}
+
+function extractOctave(note) {
+    if (!note) return null;
+    const match = note.match(/\d+/);
+    return match ? parseInt(match[0], 10) : null;
+}
+
+function extractNoteName(note) {
+    if (!note) return '';
+    return note.replace(/\d/, '');
+}
+
 function disconnect() {
     if (oscillator) {
         oscillator.stop();
@@ -334,7 +318,6 @@ function disconnect() {
         analyserNode = null;
         detector = null;
         audioInput = null;
-        listenButton.textContent = "Listen";
         isListening = false;
         analyserNode = null;
         detector = null;
@@ -349,7 +332,6 @@ const listenButton = document.getElementById("listenButton");
 
 listenButton.addEventListener("click", () => {
     if (!isListening) {
-
         listenButton.textContent = "Stop";
         if (oscillator) {
             disconnect();
