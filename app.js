@@ -109,45 +109,33 @@ function extractNoteName(note) {
     return note.replace(/\d/, '');
 }
 
-let consecutive = false;
-
 function handleKeyPress(note) {
     const activeKey = document.querySelector(".key.active");
     const newActiveKey = document.querySelector(`.key[data-note='${note}']`);
-
-    if (newActiveKey !== activeKey || !consecutive) {
-
-        if (activeKey) {
-            activeKey.classList.remove("active");
-            activeKey.style.backgroundColor = activeKey.classList.contains("black")
-                ? "black"
-                : "white";
-        }
-
-        if (newActiveKey) {
-            newActiveKey.classList.add("active");
-            newActiveKey.style.backgroundColor = "#ccc";
-            const activeNoteName = extractNoteName(activeVoiceFreq);
-            const newNoteName = extractNoteName(note);
-            const activeOctave = extractOctave(activeVoiceFreq);
-            const newOctave = extractOctave(note);
-            const isAccidentalJump = note !== activeVoiceFreq ||
-                (activeNoteName === newNoteName && (newOctave - activeOctave === 1 || newOctave - activeOctave === -1));
-
-            if (!isAccidentalJump) {
-                consecutive = true;
-                newActiveKey.style.backgroundColor = "red";
-                if (enabledAudio) {
-                    newActiveKey.click();
-                }
-
-            } else {
-                consecutive = false;
-            }
-            activeVoiceFreq = note;
-        }
+    if (activeKey) {
+        activeKey.classList.remove("active");
+        activeKey.style.backgroundColor = activeKey.classList.contains("black")
+            ? "black"
+            : "white";
     }
+    if (newActiveKey) {
+        const activeNoteName = extractNoteName(activeVoiceFreq);
+        const newNoteName = extractNoteName(note);
+        const activeOctave = extractOctave(activeVoiceFreq);
+        const newOctave = extractOctave(note);
+        const isAccidentalJump = note !== activeVoiceFreq ||
+            (activeNoteName === newNoteName && (newOctave - activeOctave === 1));
+        newActiveKey.classList.add("active");
+        newActiveKey.style.backgroundColor = "#ccc"
+        if (!isAccidentalJump) {
+            newActiveKey.style.backgroundColor = "red"
+            if (enabledAudio) {
+                newActiveKey.click();
+            }
 
+        }
+        activeVoiceFreq = note;
+    }
 }
 
 function createPiano() {
@@ -255,15 +243,9 @@ function getMicrophoneFrequency() {
             }
         } else {
             newFreq = null;
-
         }
 
-        if (newFreq || (activeVoiceFreq)) {
-            if (!newFreq) {
-                activeVoiceFreq = null;
-            }
-            handleKeyPress(newFreq);
-        }
+        handleKeyPress(newFreq);
 
         setTimeout(getMicrophoneFrequency, 75);
     }
