@@ -81,16 +81,16 @@ let audioInput = null;
 let activeVoiceFreq = null;
 let microphoneStream = null;
 let isListening = false;
-
 let selectedKey = null;
 let availableKeys = frequencies;
 let sortedKeys = Object.keys(availableKeys);
 const keysSelect = document.querySelectorAll('input[name="key-select"]');
+
 keysSelect.forEach(radio => {
     radio.addEventListener('change', (event) => {
         selectedKey = event.target.value;
         availableKeys = filterFrequenciesByKey(selectedKey);
-        sortedKeys = Object.keys(availableKeys)
+        sortedKeys = Object.keys(availableKeys);
     });
 });
 
@@ -101,6 +101,8 @@ enableAudioSelect.forEach(radio => {
         enabledAudio = event.target.value === "true";
     });
 });
+
+
 
 function createPiano() {
     const piano = document.getElementById("piano");
@@ -125,6 +127,7 @@ function createPiano() {
         }
         key.id = note.toString();
         key.addEventListener("click", () => playTone(frequencies[note]));
+        key.addEventListener("touchstart", () => playTone(frequencies[note]));
         piano.appendChild(key);
     });
 }
@@ -153,7 +156,7 @@ function playTone(frequency) {
     oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
 
     gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.001);
+    gainNode.gain.linearRampToValueAtTime(1, audioContext.currentTime + 0.005);
     gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + .5);
 
     if (isStarting) {
@@ -174,7 +177,7 @@ function startOrResetTimeout() {
     timeoutId = setTimeout(disconnect, 30000);
 }
 
-async function beginListening() {
+async function initDetector() {
     initAudioContext();
     analyserNode = audioContext.createAnalyser();
 
@@ -193,6 +196,40 @@ async function beginListening() {
     getMicrophoneFrequency();
 }
 
+const getOctave = (note) => note ? parseInt(note.match(/\d+/)[0], 10) : null
+const getNoteName = (note) => (note ?? "").replace(/\d/, '')
+
+
+function handleKeyPress(note) {
+    const prevActiveKey = document.querySelector(`.key[data-note='${activeVoiceFreq}']`);
+    const newActiveKey = document.querySelector(`.key[data-note='${note}']`);
+    if (prevActiveKey && prevActiveKey !== newActiveKey) {
+        prevActiveKey.style.backgroundColor = prevActiveKey.classList.contains("black")
+            ? "black"
+            : "white";
+    }
+
+    if (newActiveKey) {
+        const activeNoteName = getNoteName(activeVoiceFreq);
+        const newNoteName = getNoteName(note);
+        const activeOctave = getOctave(activeVoiceFreq);
+        const newOctave = getOctave(note);
+        const isAccidentalJump = note !== activeVoiceFreq ||
+            (activeNoteName === newNoteName && (newOctave - activeOctave === 1));
+
+        if (!isAccidentalJump) {
+            newActiveKey.style.backgroundColor = "red"
+            if (enabledAudio) {
+                playTone(frequencies[note]);
+            }
+
+        } else {
+            newActiveKey.style.backgroundColor = "#ccc"
+        }
+        activeVoiceFreq = note;
+    }
+}
+
 function getMicrophoneFrequency() {
     if (isListening) {
         analyserNode.getFloatTimeDomainData(audioInput);
@@ -201,7 +238,7 @@ function getMicrophoneFrequency() {
             audioContext.sampleRate
         );
         let newFreq = null;
-        if (clarity > 0.8) {
+        if (clarity > 0.85) {
             if (pitch && pitch >= 70 && pitch <= 395) {
                 newFreq = binaryDetect(sortedKeys, pitch, availableKeys);
             }
@@ -213,44 +250,28 @@ function getMicrophoneFrequency() {
             handleKeyPress(newFreq);
         }
 
-        setTimeout(getMicrophoneFrequency, 50);
+        setTimeout(getMicrophoneFrequency, 75);
     }
 }
 
-function handleKeyPress(note) {
-    const activeKey = document.querySelector(".key.active");
-    const newActiveKey = document.querySelector(`.key[data-note='${note}']`);
-    if (activeKey) {
-        activeKey.classList.remove("active");
-        activeKey.style.backgroundColor = activeKey.classList.contains("black")
-            ? "black"
-            : "white";
+function filterFrequenciesByKey(selectedKey) {
+    if (!selectedKey) {
+        return frequencies;
     }
-    if (newActiveKey) {
-        const activeNoteName = extractNoteName(activeVoiceFreq);
-        const newNoteName = extractNoteName(note);
-        const activeOctave = extractOctave(activeVoiceFreq);
-        const newOctave = extractOctave(note);
-        const isAccidentalJump = note !== activeVoiceFreq ||
-            (activeNoteName === newNoteName && (newOctave - activeOctave === 1));
-        newActiveKey.classList.add("active");
-        newActiveKey.style.backgroundColor = "#ccc";
-        if (!isAccidentalJump) {
-            newActiveKey.style.backgroundColor = "red";
-            if (enabledAudio) {
-                newActiveKey.click();
-            }
+    const scale = scales[selectedKey];
 
+    return Object.keys(frequencies).reduce((acc, note) => {
+        const noteName = note.replace(/\d/, '');
+        if (scale.includes(noteName)) {
+            acc[note] = frequencies[note];
         }
-
-    }
-    activeVoiceFreq = note;
+        return acc;
+    }, {});
 }
 
 function binaryDetect(arr, target, values) {
     let low = 0;
     let high = arr.length - 1;
-
 
     while (low <= high) {
         const mid = Math.floor((low + high) / 2);
@@ -276,33 +297,6 @@ function binaryDetect(arr, target, values) {
     return arr[low];
 }
 
-
-
-function filterFrequenciesByKey(selectedKey) {
-    if (!selectedKey) {
-        return frequencies;
-    }
-    const scale = scales[selectedKey];
-    return Object.keys(frequencies).reduce((acc, note) => {
-        const noteName = note.replace(/\d/, '');
-        if (scale.includes(noteName)) {
-            acc[note] = frequencies[note];
-        }
-        return acc;
-    }, {});
-}
-
-function extractOctave(note) {
-    if (!note) return null;
-    const match = note.match(/\d+/);
-    return match ? parseInt(match[0], 10) : null;
-}
-
-function extractNoteName(note) {
-    if (!note) return '';
-    return note.replace(/\d/, '');
-}
-
 function disconnect() {
     if (oscillator) {
         oscillator.stop();
@@ -314,13 +308,9 @@ function disconnect() {
     }
 
     if (isListening) {
-        isListening = false;
         analyserNode = null;
         detector = null;
-        audioInput = null;
         isListening = false;
-        analyserNode = null;
-        detector = null;
         audioInput = null;
         microphoneStream.getTracks()?.forEach((track) => track.stop());
         microphoneStream = null;
@@ -337,7 +327,7 @@ listenButton.addEventListener("click", () => {
             disconnect();
         }
         isListening = true;
-        beginListening();
+        initDetector();
     } else {
         disconnect();
         listenButton.textContent = "Listen";
