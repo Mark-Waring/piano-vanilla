@@ -35,7 +35,3 @@
     position: absolute;
     top: 0;
 }
-
-.key:active {
-    background-color: red !important;
-}
