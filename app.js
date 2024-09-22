@@ -101,7 +101,7 @@ function filterFrequenciesByKey(selectedKey) {
 }
 
 const smoothingInterval = 0.02;
-const attackDuration = 0.4;
+const attackDuration = 0.398;
 const currAudioTime = () => audioContext.currentTime;
 
 function playTone(Hz) {
@@ -221,7 +221,7 @@ function startOrResetTimeout() {
     clearTimeout(sleepId);
   }
 
-  disconnectId = setTimeout(disconnect, 30000);
+  disconnectId = setTimeout(disconnect, 12000);
   sleepId = setTimeout(sleep, 6000);
 }
 
@@ -243,7 +243,7 @@ const getNoteName = (note) => (note ?? "").replace(/\d/, "");
 
 let lastPlayedNote = null;
 let lastPlayedTime = 0;
-const MIN_PLAY_INTERVAL = 300;
+const MIN_PLAY_INTERVAL = 600;
 
 function activateFromVoice(note) {
   const currTime = currAudioTime();
