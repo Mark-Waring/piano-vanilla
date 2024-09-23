@@ -1,69 +1,21 @@
-const { PitchDetector } = await import("pitchy");
+import {createAudioContext} from "./audioContext";
+import {frequencies, scales} from "./frequencies";
+import {detectFrequency} from "./detectFrequency";
 
-const frequencies = {
-  C2: 65.41,
-  "C#2": 69.3,
-  D2: 73.42,
-  "D#2": 77.78,
-  E2: 82.41,
-  F2: 87.31,
-  "F#2": 92.5,
-  G2: 98.0,
-  "G#2": 103.83,
-  A2: 110.0,
-  "A#2": 116.54,
-  B2: 123.47,
-  C3: 130.81,
-  "C#3": 138.59,
-  D3: 146.83,
-  "D#3": 155.56,
-  E3: 164.81,
-  F3: 174.61,
-  "F#3": 185.0,
-  G3: 196.0,
-  "G#3": 207.65,
-  A3: 220.0,
-  "A#3": 233.08,
-  B3: 246.94,
-  C4: 261.63,
-  "C#4": 277.18,
-  D4: 293.66,
-  "D#4": 311.13,
-  E4: 329.63,
-  F4: 349.23,
-  "F#4": 369.99,
-  G4: 392.0,
-  "G#4": 415.3,
-  A4: 440.0,
-  "A#4": 466.16,
-  B4: 493.88,
-  C5: 523.25,
-};
+const {
+  getAudioContext,
+  getAudioInput,
+  getDetector,
+  getOscillator,
+  getIsListening,
+  getAnalyserNode,
+  getVoiceActivatedNote,
+  setVoiceActivatedNote,
+  initDetector,
+  playTone,
+  disconnect
+} = createAudioContext()
 
-const scales = {
-  C: ["C", "D", "E", "F", "G", "A", "B"],
-  "C#": ["C#", "D#", "F", "F#", "G#", "A#", "C"],
-  D: ["D", "E", "F#", "G", "A", "B", "C#"],
-  "D#": ["D#", "F", "G", "G#", "A#", "C", "D"],
-  E: ["E", "F#", "G#", "A", "B", "C#", "D#"],
-  F: ["F", "G", "A", "A#", "C", "D", "E"],
-  "F#": ["F#", "G#", "A#", "B", "C#", "D#", "F"],
-  G: ["G", "A", "B", "C", "D", "E", "F#"],
-  "G#": ["G#", "A#", "C", "C#", "D#", "F", "G"],
-  A: ["A", "B", "C#", "D", "E", "F#", "G#"],
-  "A#": ["A#", "C", "D", "D#", "F", "G", "A"],
-  B: ["B", "C#", "D#", "E", "F#", "G#", "A#"],
-};
-
-let audioContext = null;
-let oscillator = null;
-let analyserNode = null;
-let gainNode = null;
-let microphoneStream = null;
-let detector = null;
-let audioInput = null;
-let voiceActivatedNote = null;
-let isListening = false;
 let currNoteOptions = Object.keys(frequencies).sort(
   (a, b) => frequencies[a] - frequencies[b]
 );
@@ -72,16 +24,32 @@ let currFrequencyOptions = Object.values(frequencies).sort(
 );
 const keySelect = document.querySelectorAll('input[name="key-select"]');
 
+function calculateMidpoints(frequencies) {
+  const midpoints = [];
+  const freqArray = Object.values(frequencies).sort((a, b) => a - b);
+
+  for (let i = 0; i < freqArray.length - 1; i++) {
+    const geometricMean = Math.sqrt(freqArray[i] * freqArray[i + 1]);
+    midpoints.push(geometricMean);
+  }
+
+  return midpoints;
+}
+
+let currMidpoints = calculateMidpoints(frequencies);
+
 keySelect.forEach((radio) => {
   radio.addEventListener("change", (event) => {
     const selectedKey = event.target.value;
     const filteredByKey = filterFrequenciesByKey(selectedKey);
     currNoteOptions = Object.keys(filteredByKey).sort(
-      (a, b) => frequencies[a] - frequencies[b]
+        (a, b) => frequencies[a] - frequencies[b]
     );
     currFrequencyOptions = Object.values(filteredByKey).sort(
-      (a, b) => frequencies[a] - frequencies[b]
+        (a, b) => frequencies[a] - frequencies[b]
     );
+
+    currMidpoints = calculateMidpoints(filteredByKey);
   });
 });
 
@@ -100,47 +68,8 @@ function filterFrequenciesByKey(selectedKey) {
   }, {});
 }
 
-const smoothingInterval = 0.02;
-const attackDuration = 0.398;
-const currAudioTime = () => audioContext.currentTime;
 
-function playTone(Hz) {
-  return () => {
-    if (!isListening) {
-      return;
-    }
-
-    initAudioContext();
-
-    if (!oscillator) {
-      oscillator = audioContext.createOscillator();
-      oscillator.type = "triangle";
-      oscillator.start();
-    }
-
-    if (!gainNode) {
-      gainNode = audioContext.createGain();
-      gainNode.connect(audioContext.destination);
-      oscillator.connect(gainNode);
-    }
-
-    gainNode.gain.cancelScheduledValues(currAudioTime());
-
-    oscillator.frequency.value = Hz;
-    trigger(gainNode.gain);
-  };
-}
-
-function trigger(gain) {
-  gain.setTargetAtTime(
-    1,
-    currAudioTime() + smoothingInterval,
-    smoothingInterval
-  );
-  gain.setTargetAtTime(0, currAudioTime() + attackDuration, smoothingInterval);
-
-  startOrResetTimeout();
-}
+const currAudioTime = () => getAudioContext().currentTime;
 
 let enabledAudio = true;
 const enableAudioSelect = document.querySelectorAll(
@@ -189,7 +118,7 @@ function createPiano() {
 }
 
 function toggleHighlightKey(key, marker) {
-  if (isListening) {
+  if (getIsListening()) {
     if (marker === "start") {
       key.style.backgroundColor = "red";
     } else if (marker === "end") {
@@ -200,43 +129,6 @@ function toggleHighlightKey(key, marker) {
   }
 }
 
-function initAudioContext() {
-  if (!audioContext || audioContext.state === "closed") {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioContext.state === "suspended") {
-    audioContext.resume();
-  }
-}
-
-let sleepId;
-let disconnectId;
-
-function startOrResetTimeout() {
-  if (disconnectId) {
-    clearTimeout(disconnectId);
-  }
-
-  if (sleepId) {
-    clearTimeout(sleepId);
-  }
-
-  disconnectId = setTimeout(disconnect, 12000);
-  sleepId = setTimeout(sleep, 6000);
-}
-
-function sleep() {
-  if (oscillator) {
-    oscillator.stop();
-    oscillator.disconnect();
-    oscillator = null;
-  }
-
-  if (gainNode) {
-    gainNode.disconnect();
-    gainNode = null;
-  }
-}
 
 const getOctave = (note) => (note ? parseInt(note.match(/\d+/)[0], 10) : null);
 const getNoteName = (note) => (note ?? "").replace(/\d/, "");
@@ -247,9 +139,9 @@ const MIN_PLAY_INTERVAL = 600;
 
 function activateFromVoice(note) {
   const currTime = currAudioTime();
-  if (voiceActivatedNote) {
+  if (getVoiceActivatedNote()) {
     var prevActiveKey = document.querySelector(
-      `.key[data-note='${voiceActivatedNote}']`
+      `.key[data-note='${getVoiceActivatedNote()}']`
     );
   }
   if (note) {
@@ -262,12 +154,12 @@ function activateFromVoice(note) {
   }
 
   if (newActiveKey) {
-    const prevNote = getNoteName(voiceActivatedNote);
+    const prevNote = getNoteName(getVoiceActivatedNote());
     const newNoteName = getNoteName(note);
-    const prevOctave = getOctave(voiceActivatedNote);
+    const prevOctave = getOctave(getVoiceActivatedNote());
     const newOctave = getOctave(note);
     const isTempNote =
-      note !== voiceActivatedNote ||
+      note !== getVoiceActivatedNote() ||
       (prevNote === newNoteName && Math.abs(newOctave - prevOctave) === 1);
     const holdNote =
       lastPlayedNote === note && currTime - lastPlayedTime < MIN_PLAY_INTERVAL;
@@ -281,7 +173,7 @@ function activateFromVoice(note) {
     } else if (!holdNote) {
       newActiveKey.style.backgroundColor = "#ccc";
     }
-    voiceActivatedNote = note;
+    setVoiceActivatedNote(note);
   }
 }
 
@@ -290,7 +182,7 @@ let lastProcessedTime = 0;
 const PROCESS_INTERVAL = 75;
 
 function getMicrophoneFrequency() {
-  if (!isListening) {
+  if (!getIsListening()) {
     return;
   }
   const now = Date.now();
@@ -306,13 +198,13 @@ function getMicrophoneFrequency() {
   if (!isProcessing) {
     isProcessing = true;
 
-    analyserNode.getFloatTimeDomainData(audioInput);
-    const [pitch, clarity] = detector.findPitch(
-      audioInput,
-      audioContext.sampleRate
+    getAnalyserNode().getFloatTimeDomainData(getAudioInput());
+    const [pitch, clarity] = getDetector().findPitch(
+        getAudioInput(),
+      getAudioContext().sampleRate
     );
     if (clarity > 0.9 && pitch >= 70 && pitch <= 395) {
-      const matchedNoteIdx = binaryDetect(currFrequencyOptions, pitch);
+      const matchedNoteIdx = detectFrequency(currFrequencyOptions, pitch, currMidpoints);
       var newNote = currNoteOptions[matchedNoteIdx];
     }
 
@@ -323,7 +215,7 @@ function getMicrophoneFrequency() {
       lastPlayedNote = null;
     }
 
-    if ((newNote || voiceActivatedNote) && lastPlayedNote !== newNote) {
+    if ((newNote || getVoiceActivatedNote()) && lastPlayedNote !== newNote) {
       activateFromVoice(newNote);
     }
 
@@ -334,116 +226,20 @@ function getMicrophoneFrequency() {
   }
 }
 
-function binaryDetect(arr, target) {
-  let low = 0;
-  let high = arr.length - 1;
-
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    const midValue = arr[mid];
-
-    if (midValue === target) {
-      return mid;
-    }
-
-    if (midValue < target) {
-      low = mid + 1;
-    } else {
-      high = mid - 1;
-    }
-  }
-
-  if (low >= arr.length) {
-    return arr.length - 1;
-  }
-  if (
-    low > 0 &&
-    Math.abs(arr[low - 1] - target) < Math.abs(arr[low] - target)
-  ) {
-    return low - 1;
-  }
-  return low;
-}
-
-async function initDetector() {
-  try {
-    initAudioContext();
-    if (!analyserNode) {
-      analyserNode = audioContext.createAnalyser();
-    }
-
-    microphoneStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-    });
-
-    const source = audioContext.createMediaStreamSource(microphoneStream);
-    source.connect(analyserNode);
-
-    detector = PitchDetector.forFloat32Array(analyserNode.fftSize);
-    detector.minVolumeDecibels = -40;
-
-    audioInput = new Float32Array(analyserNode.fftSize);
-
-    startOrResetTimeout();
-    getMicrophoneFrequency();
-  } catch (error) {
-    console.error(
-      "Error accessing microphone or setting up analyser node:",
-      error
-    );
-  }
-}
-
-function disconnect() {
-  if (audioContext) {
-    audioContext.close().then(() => {
-      audioContext = null;
-    });
-  }
-
-  if (oscillator) {
-    oscillator.stop();
-    oscillator.disconnect();
-    oscillator = null;
-  }
-
-  if (gainNode) {
-    gainNode.disconnect();
-    gainNode = null;
-  }
-
-  if (isListening) {
-    if (analyserNode) {
-      analyserNode.disconnect();
-      analyserNode = null;
-    }
-
-    if (microphoneStream) {
-      microphoneStream.getTracks().forEach((track) => track.stop());
-      microphoneStream = null;
-    }
-
-    detector = null;
-    audioInput = null;
-    isListening = false;
-    listenButton.textContent = "Start";
-  }
-}
-
 const listenButton = document.getElementById("start-button");
 
 listenButton.addEventListener("click", async () => {
-  if (!isListening) {
+  if (!getIsListening()) {
     listenButton.textContent = "Stop";
-    if (oscillator) {
+    if (getOscillator()) {
       disconnect();
+      listenButton.textContent = "Start";
     }
-    isListening = true;
-    initDetector();
+    await initDetector();
+    getMicrophoneFrequency();
   } else {
     disconnect();
     listenButton.textContent = "Start";
-    isListening = false;
   }
 });
 
