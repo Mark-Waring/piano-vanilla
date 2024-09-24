@@ -2,6 +2,8 @@ import {createAudioContext} from "./audioContext";
 import {frequencies, scales} from "./frequencies";
 import {detectFrequency} from "./detectFrequency";
 
+const listenButton = document.getElementById("start-button");
+
 const {
   getAudioContext,
   getAudioInput,
@@ -14,7 +16,7 @@ const {
   initDetector,
   playTone,
   disconnect
-} = createAudioContext()
+} = createAudioContext(listenButton)
 
 let currNoteOptions = Object.keys(frequencies).sort(
   (a, b) => frequencies[a] - frequencies[b]
@@ -225,8 +227,6 @@ function getMicrophoneFrequency() {
     }, PROCESS_INTERVAL);
   }
 }
-
-const listenButton = document.getElementById("start-button");
 
 listenButton.addEventListener("click", async () => {
   if (!getIsListening()) {

@@ -2,15 +2,21 @@
     width: 100%;
 }
 
+.piano-container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .piano {
     position: relative;
-    height: 125px;
-    width: 550px;
+    height: 147px;
+    width: 650px;
     max-width: 100%;
 }
 
 .selections {
-    width: 550px;
+    width: 850px;
     max-width: 100%;
 }
 

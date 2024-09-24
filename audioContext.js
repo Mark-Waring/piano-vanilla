@@ -1,7 +1,7 @@
 
 const { PitchDetector } = await import("pitchy");
 
-export function createAudioContext() {
+export function createAudioContext(listenButton) {
     let audioContext = null;
     let oscillator = null;
     let analyserNode = null;
@@ -158,6 +158,8 @@ export function createAudioContext() {
             audioDetector = null;
             audioContext = null;
             isListening = false;
+            console.log("running")
+            listenButton.textContent = "Start"
         }
     }
 
