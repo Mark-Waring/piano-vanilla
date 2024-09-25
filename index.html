@@ -8,10 +8,11 @@
 </head>
 <body>
 <div id="root">
-    <div class="piano-container">
-        <div class="piano" id="piano"></div>
+    <div class="piano" id="piano"></div>
+    <div class="start-button">
+        <button id="start-button">Start</button>
     </div>
-    <form class="selections" style="text-align: center; padding-top: 10px">
+    <form class="selections" style="text-align: center; padding-top: 10px; width: 100%; max-width: 800px">
         Enable audio:
         <label style="flex: 1 1 100px; margin-right: 10px;">
             <input type="radio" name="audio-select" value="true" checked>Yes
@@ -20,10 +21,7 @@
             <input type="radio" name="audio-select" value="false">No
         </label>
     </form>
-    <div class="selections" style="text-align: center; padding-top: 10px">
-        <button id="start-button">Start</button>
-    </div>
-    <form style="padding-top: 10px; max-width: 650px">
+    <form style="padding-top: 10px; max-width: 800px">
         <fieldset style="display: flex; flex-wrap: wrap; gap: 10px;">
             <legend style="width: 100%;">Select Key:</legend>
 
@@ -81,7 +79,6 @@
         </fieldset>
     </form>
 </div>
-<footer>v2.03</footer>
 <script type="module" src="app.js"></script>
 </body>
 </html>

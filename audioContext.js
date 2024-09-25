@@ -1,7 +1,7 @@
 
 const { PitchDetector } = await import("pitchy");
 
-export function createAudioContext(listenButton) {
+export function createAudioContext() {
     let audioContext = null;
     let oscillator = null;
     let analyserNode = null;
@@ -11,6 +11,7 @@ export function createAudioContext(listenButton) {
     let audioInput = null;
     let voiceActivatedNote = null;
     let isListening = false;
+    let isAudioEnabled = true;
 
     function getAudioContext() {
         return audioContext;
@@ -42,6 +43,14 @@ export function createAudioContext(listenButton) {
 
     function getIsListening() {
         return isListening;
+    }
+
+    function getIsAudioEnabled() {
+        return isAudioEnabled;
+    }
+
+    function setIsAudioEnabled(isEnabled) {
+        isAudioEnabled = isEnabled;
     }
 
     function initAudioContext() {
@@ -158,7 +167,7 @@ export function createAudioContext(listenButton) {
             audioDetector = null;
             audioContext = null;
             isListening = false;
-            console.log("running")
+            const listenButton = document.getElementById("start-button");
             listenButton.textContent = "Start"
         }
     }
@@ -198,7 +207,9 @@ export function createAudioContext(listenButton) {
         getIsListening,
         getAnalyserNode,
         getVoiceActivatedNote,
+        getIsAudioEnabled,
         setVoiceActivatedNote,
+        setIsAudioEnabled,
         initDetector,
         playTone,
         disconnect

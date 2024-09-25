@@ -52,3 +52,30 @@ export const scales = {
     "A#": ["A#", "C", "D", "D#", "F", "G", "A"],
     B: ["B", "C#", "D#", "E", "F#", "G#", "A#"],
 };
+
+export function calculateMidpoints(frequencies) {
+    const midpoints = [];
+    const freqArray = Object.values(frequencies).sort((a, b) => a - b);
+
+    for (let i = 0; i < freqArray.length - 1; i++) {
+        const geometricMean = Math.sqrt(freqArray[i] * freqArray[i + 1]);
+        midpoints.push(Math.round(geometricMean * 100) / 100);
+    }
+
+    return midpoints;
+}
+
+export function filterFrequenciesByKey(selectedKey) {
+    if (!selectedKey) {
+        return frequencies;
+    }
+    const scale = scales[selectedKey];
+
+    return Object.keys(frequencies).reduce((acc, note) => {
+        const noteName = note.replace(/\d/, "");
+        if (scale.includes(noteName)) {
+            acc[note] = frequencies[note];
+        }
+        return acc;
+    }, {});
+}
