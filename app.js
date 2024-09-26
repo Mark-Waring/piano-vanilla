@@ -1,97 +1,119 @@
-import {createAudioContext} from "./audioContext";
-import {frequencies, calculateMidpoints, filterFrequenciesByKey} from "./frequencies";
-import {detectFrequency} from "./matchFrequency";
+import { createAudioContext } from "./audioContext";
+import {
+  frequencies,
+  calculateMidpoints,
+  filterFrequenciesByKey,
+} from "./frequencies";
+import { detectFrequency } from "./matchFrequency";
 
 const {
-    getAudioContext,
-    getAudioInput,
-    getDetector,
-    getOscillator,
-    getIsListening,
-    getAnalyserNode,
-    getVoiceActivatedNote,
-    getIsAudioEnabled,
-    setIsAudioEnabled,
-    setVoiceActivatedNote,
-    initDetector,
-    playTone,
-    disconnect
+  getAudioContext,
+  getAudioInput,
+  getDetector,
+  getOscillator,
+  getIsListening,
+  getAnalyserNode,
+  getVoiceActivatedNote,
+  getIsAudioEnabled,
+  setIsAudioEnabled,
+  setVoiceActivatedNote,
+  initDetector,
+  playTone,
+  disconnect,
 } = createAudioContext();
 
+const keySelect = document.querySelectorAll('input[name="key-select"]');
+
+const filterToggler = document.querySelector("#scales");
+filterToggler.addEventListener("change", (event) => {
+  const checked = event.target.checked;
+  if (!checked) {
+    const allSelect = Array.from(keySelect).find(
+      (el) => !el.value && !el.checked
+    );
+    if (allSelect) {
+      allSelect.click();
+    }
+  }
+  const radios = document.querySelector(".key-radios");
+  radios.style.visibility = checked ? "visible" : "hidden";
+});
+
 let currNoteOptions = Object.keys(frequencies).sort(
-    (a, b) => frequencies[a] - frequencies[b]
+  (a, b) => frequencies[a] - frequencies[b]
 );
 let currFrequencyOptions = Object.values(frequencies).sort(
-    (a, b) => frequencies[a] - frequencies[b]
+  (a, b) => frequencies[a] - frequencies[b]
 );
-const keySelect = document.querySelectorAll('input[name="key-select"]');
 
 let currMidpoints = calculateMidpoints(frequencies);
 
 keySelect.forEach((radio) => {
-    radio.addEventListener("change", (event) => {
-        const selectedKey = event.target.value;
-        const filteredByKey = filterFrequenciesByKey(selectedKey);
-        currNoteOptions = Object.keys(filteredByKey).sort(
-            (a, b) => frequencies[a] - frequencies[b]
-        );
-        currFrequencyOptions = Object.values(filteredByKey).sort(
-            (a, b) => frequencies[a] - frequencies[b]
-        );
-
-        currMidpoints = calculateMidpoints(filteredByKey);
-    });
+  radio.addEventListener("change", handleKeySelect);
 });
+
+function handleKeySelect(event) {
+  const selectedKey = event.target.value;
+  const filteredByKey = filterFrequenciesByKey(selectedKey);
+  currNoteOptions = Object.keys(filteredByKey).sort(
+    (a, b) => frequencies[a] - frequencies[b]
+  );
+  currFrequencyOptions = Object.values(filteredByKey).sort(
+    (a, b) => frequencies[a] - frequencies[b]
+  );
+
+  currMidpoints = calculateMidpoints(filteredByKey);
+}
 
 const currAudioTime = () => getAudioContext().currentTime;
 
 const enableAudioSelect = document.querySelectorAll(
-    'input[name="audio-select"]'
+  'input[name="audio-select"]'
 );
 enableAudioSelect.forEach((radio) => {
-    radio.addEventListener("change", (event) => {
-        setIsAudioEnabled(event.target.value === "true");
-    });
+  radio.addEventListener("change", (event) => {
+    setIsAudioEnabled(event.target.value === "true");
+  });
 });
 
 const getOctave = (note) => (note ? parseInt(note.match(/\d+/)[0], 10) : null);
 const getNoteName = (note) => (note ?? "").replace(/\d/, "");
 
 function createPiano() {
-    const piano = document.getElementById("piano");
-    const keys = Object.keys(frequencies);
+  const piano = document.getElementById("piano");
+  const keys = Object.keys(frequencies);
 
-    keys.forEach((note) => {
-        const key = document.createElement("div");
-        const isWhite = !note.includes("#");
-        key.className = `key ${!isWhite ? "black" : "white"}`;
-        key.dataset.note = note;
-        if (["B", "E"].includes(getNoteName(note))) {
-            key.classList.add("consecutive-white")
-        }
-        key.id = note.toString();
-        key.addEventListener("mousedown", () => {
-            toggleHighlightKey(key, "start");
-            playTone(frequencies[note])();
-        });
-        key.addEventListener("mouseup", () => {
-            toggleHighlightKey(key, "end");
-        });
-
-        piano.appendChild(key);
+  keys.forEach((note) => {
+    const key = document.createElement("div");
+    const isWhite = !note.includes("#");
+    key.className = `key ${!isWhite ? "black" : "white"}`;
+    key.dataset.note = note;
+    if (["B", "E"].includes(getNoteName(note))) {
+      key.classList.add("consecutive-white");
+    }
+    key.id = note.toString();
+    key.addEventListener("mousedown", () => {
+      toggleHighlightKey(key, "start");
+      playTone(frequencies[note])();
     });
+    key.addEventListener("mouseup", () => {
+      toggleHighlightKey(key, "end");
+    });
+
+    piano.appendChild(key);
+  });
 }
 
 function toggleHighlightKey(key, marker) {
-    if (getIsListening()) {
-        if (marker === "start") {
-            key.style.backgroundColor = "red";
-        } else if (marker === "end") {
-            key.style.backgroundColor = key.classList.contains("black")
-                ? "black"
-                : "white";
-        }
+  if (getIsListening()) {
+    if (marker === "start") {
+      key.style.backgroundColor = "red";
+    } else if (marker === "end") {
+      key.style.backgroundColor = key.classList.contains("black")
+        ? "black"
+        : "white";
     }
+  }
 }
 
 let lastPlayedNote = null;
@@ -99,43 +121,43 @@ let lastPlayedTime = 0;
 const MIN_PLAY_INTERVAL = 600;
 
 function activateFromVoice(note) {
-    const currTime = currAudioTime();
-    if (getVoiceActivatedNote()) {
-        var prevActiveKey = document.querySelector(
-            `.key[data-note='${getVoiceActivatedNote()}']`
-        );
-    }
-    if (note) {
-        var newActiveKey = document.querySelector(`.key[data-note='${note}']`);
-    }
+  const currTime = currAudioTime();
+  if (getVoiceActivatedNote()) {
+    var prevActiveKey = document.querySelector(
+      `.key[data-note='${getVoiceActivatedNote()}']`
+    );
+  }
+  if (note) {
+    var newActiveKey = document.querySelector(`.key[data-note='${note}']`);
+  }
 
-    if (prevActiveKey && prevActiveKey !== newActiveKey) {
-        toggleHighlightKey(prevActiveKey, "end");
-        lastPlayedNote = null;
-    }
+  if (prevActiveKey && prevActiveKey !== newActiveKey) {
+    toggleHighlightKey(prevActiveKey, "end");
+    lastPlayedNote = null;
+  }
 
-    if (newActiveKey) {
-        const prevNote = getNoteName(getVoiceActivatedNote());
-        const newNoteName = getNoteName(note);
-        const prevOctave = getOctave(getVoiceActivatedNote());
-        const newOctave = getOctave(note);
-        const isTempNote =
-            note !== getVoiceActivatedNote() ||
-            (prevNote === newNoteName && Math.abs(newOctave - prevOctave) === 1);
-        const holdNote =
-            lastPlayedNote === note && currTime - lastPlayedTime < MIN_PLAY_INTERVAL;
-        if (!isTempNote && !holdNote) {
-            toggleHighlightKey(newActiveKey, "start");
-            lastPlayedNote = note;
-            lastPlayedTime = currTime;
-            if (getIsAudioEnabled()) {
-                playTone(frequencies[note])();
-            }
-        } else if (!holdNote) {
-            newActiveKey.style.backgroundColor = "#ccc";
-        }
-        setVoiceActivatedNote(note);
+  if (newActiveKey) {
+    const prevNote = getNoteName(getVoiceActivatedNote());
+    const newNoteName = getNoteName(note);
+    const prevOctave = getOctave(getVoiceActivatedNote());
+    const newOctave = getOctave(note);
+    const isTempNote =
+      note !== getVoiceActivatedNote() ||
+      (prevNote === newNoteName && Math.abs(newOctave - prevOctave) === 1);
+    const holdNote =
+      lastPlayedNote === note && currTime - lastPlayedTime < MIN_PLAY_INTERVAL;
+    if (!isTempNote && !holdNote) {
+      toggleHighlightKey(newActiveKey, "start");
+      lastPlayedNote = note;
+      lastPlayedTime = currTime;
+      if (getIsAudioEnabled()) {
+        playTone(frequencies[note])();
+      }
+    } else if (!holdNote) {
+      newActiveKey.style.backgroundColor = "#ccc";
     }
+    setVoiceActivatedNote(note);
+  }
 }
 
 let isProcessing = false;
@@ -143,65 +165,69 @@ let lastProcessedTime = 0;
 const PROCESS_INTERVAL = 75;
 
 function getMicrophoneFrequency() {
-    if (!getIsListening()) {
-        return;
+  if (!getIsListening()) {
+    return;
+  }
+  const now = Date.now();
+  if (now - lastProcessedTime < PROCESS_INTERVAL) {
+    return setTimeout(
+      getMicrophoneFrequency,
+      PROCESS_INTERVAL - (now - lastProcessedTime)
+    );
+  }
+
+  lastProcessedTime = now;
+
+  if (!isProcessing) {
+    isProcessing = true;
+
+    getAnalyserNode().getFloatTimeDomainData(getAudioInput());
+    const [pitch, clarity] = getDetector().findPitch(
+      getAudioInput(),
+      getAudioContext().sampleRate
+    );
+    if (clarity > 0.9 && pitch >= 70 && pitch <= 395) {
+      const matchedNoteIdx = detectFrequency(
+        currFrequencyOptions,
+        pitch,
+        currMidpoints
+      );
+      var newNote = currNoteOptions[matchedNoteIdx];
     }
-    const now = Date.now();
-    if (now - lastProcessedTime < PROCESS_INTERVAL) {
-        return setTimeout(
-            getMicrophoneFrequency,
-            PROCESS_INTERVAL - (now - lastProcessedTime)
-        );
+
+    if (
+      lastPlayedNote === newNote &&
+      currAudioTime() - lastPlayedTime >= MIN_PLAY_INTERVAL
+    ) {
+      lastPlayedNote = null;
     }
 
-    lastProcessedTime = now;
-
-    if (!isProcessing) {
-        isProcessing = true;
-
-        getAnalyserNode().getFloatTimeDomainData(getAudioInput());
-        const [pitch, clarity] = getDetector().findPitch(
-            getAudioInput(),
-            getAudioContext().sampleRate
-        );
-        if (clarity > 0.9 && pitch >= 70 && pitch <= 395) {
-            const matchedNoteIdx = detectFrequency(currFrequencyOptions, pitch, currMidpoints);
-            var newNote = currNoteOptions[matchedNoteIdx];
-        }
-
-        if (
-            lastPlayedNote === newNote &&
-            currAudioTime() - lastPlayedTime >= MIN_PLAY_INTERVAL
-        ) {
-            lastPlayedNote = null;
-        }
-
-        if ((newNote || getVoiceActivatedNote()) && lastPlayedNote !== newNote) {
-            activateFromVoice(newNote);
-        }
-
-        setTimeout(() => {
-            isProcessing = false;
-            getMicrophoneFrequency();
-        }, PROCESS_INTERVAL);
+    if ((newNote || getVoiceActivatedNote()) && lastPlayedNote !== newNote) {
+      activateFromVoice(newNote);
     }
+
+    setTimeout(() => {
+      isProcessing = false;
+      getMicrophoneFrequency();
+    }, PROCESS_INTERVAL);
+  }
 }
 
 const listenButton = document.getElementById("start-button");
 
 listenButton.addEventListener("click", async () => {
-    if (!getIsListening()) {
-        listenButton.textContent = "Stop";
-        if (getOscillator()) {
-            disconnect();
-            listenButton.textContent = "Start";
-        }
-        await initDetector();
-        getMicrophoneFrequency();
-    } else {
-        disconnect();
-        listenButton.textContent = "Start";
+  if (!getIsListening()) {
+    listenButton.textContent = "Stop";
+    if (getOscillator()) {
+      disconnect();
+      listenButton.textContent = "Start";
     }
+    await initDetector();
+    getMicrophoneFrequency();
+  } else {
+    disconnect();
+    listenButton.textContent = "Start";
+  }
 });
 
 createPiano();
