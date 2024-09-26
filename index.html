@@ -8,21 +8,31 @@
   </head>
   <body>
     <div id="root">
-      <div class="piano" style="padding: 2% 10px 0" id="piano"></div>
-      <button class="btn btn-primary" style="margin: 5px" id="start-button">
-        Start
-      </button>
-      <div style="display: flex">
-        <form
-          class="selections"
-          style="text-align: center; width: 100%; gap: 15px; display: flex"
-        >
+      <div class="piano" id="piano"></div>
+      <div>
+        <button class="btn btn-primary" style="margin: 5px" id="start-button">
+          Start
+        </button>
+      </div>
+      <div>
+        <form class="selections">
           Enable audio:
           <label>
-            <input type="radio" name="audio-select" value="true" checked />Yes
+            <input
+              style="margin-right: 3px"
+              type="radio"
+              name="audio-select"
+              value="true"
+              checked
+            />Yes
           </label>
           <label>
-            <input type="radio" name="audio-select" value="false" />No
+            <input
+              style="margin-right: 3px"
+              type="radio"
+              name="audio-select"
+              value="false"
+            />No
           </label>
         </form>
       </div>
@@ -30,59 +40,39 @@
         <input type="checkbox" id="scales" name="scales" />
         <label for="scales">Filter By Key</label>
       </div>
-      <form
-        class="key-radios"
-        style="
-          visibility: hidden;
-          padding-top: 10px;
-          width: 75%;
-          text-align: center;
-        "
-      >
-        <fieldset
-          style="
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-          "
-        >
+      <form class="key-radios">
+        <fieldset>
           <label>
-            <input type="radio" name="key-select" value="" checked /> All
+            <input
+              type="radio"
+              id="all-key-select"
+              name="key-select"
+              value=""
+              checked
+            />
+            All
           </label>
-
           <label> <input type="radio" name="key-select" value="C" /> C </label>
-
           <label>
             <input type="radio" name="key-select" value="C#" /> C# / Db
           </label>
-
           <label> <input type="radio" name="key-select" value="D" /> D </label>
-
           <label>
             <input type="radio" name="key-select" value="D#" /> D# / Eb
           </label>
-
           <label> <input type="radio" name="key-select" value="E" /> E </label>
-
           <label> <input type="radio" name="key-select" value="F" /> F </label>
-
           <label>
             <input type="radio" name="key-select" value="F#" /> F# / Gb
           </label>
-
           <label> <input type="radio" name="key-select" value="G" /> G </label>
-
           <label>
             <input type="radio" name="key-select" value="G#" /> G# / Ab
           </label>
-
           <label> <input type="radio" name="key-select" value="A" /> A </label>
-
           <label>
             <input type="radio" name="key-select" value="A#" /> A# / Bb
           </label>
-
           <label> <input type="radio" name="key-select" value="B" /> B </label>
         </fieldset>
       </form>

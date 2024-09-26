@@ -19,21 +19,17 @@ const {
   setVoiceActivatedNote,
   initDetector,
   playTone,
+  resetTimeout,
   disconnect,
 } = createAudioContext();
 
 const keySelect = document.querySelectorAll('input[name="key-select"]');
 
-const filterToggler = document.querySelector("#scales");
-filterToggler.addEventListener("change", (event) => {
+document.querySelector("#scales").addEventListener("change", (event) => {
   const checked = event.target.checked;
   if (!checked) {
-    const allSelect = Array.from(keySelect).find(
-      (el) => !el.value && !el.checked
-    );
-    if (allSelect) {
-      allSelect.click();
-    }
+    const allKeySelect = document.querySelector("#all-key-select");
+    allKeySelect.click();
   }
   const radios = document.querySelector(".key-radios");
   radios.style.visibility = checked ? "visible" : "hidden";
@@ -84,9 +80,9 @@ function createPiano() {
   const keys = Object.keys(frequencies);
 
   keys.forEach((note) => {
-    const key = document.createElement("div");
+    const key = document.createElement("button");
     const isWhite = !note.includes("#");
-    key.className = `key ${!isWhite ? "black" : "white"}`;
+    key.className = `key ${!isWhite ? "black" : "white"} btn`;
     key.dataset.note = note;
     if (["B", "E"].includes(getNoteName(note))) {
       key.classList.add("consecutive-white");
@@ -152,6 +148,8 @@ function activateFromVoice(note) {
       lastPlayedTime = currTime;
       if (getIsAudioEnabled()) {
         playTone(frequencies[note])();
+      } else {
+        resetTimeout();
       }
     } else if (!holdNote) {
       newActiveKey.style.backgroundColor = "#ccc";

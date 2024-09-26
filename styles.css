@@ -2,45 +2,45 @@
 
 #root {
     width: 100%;
-    text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding-top: 1%;
-}
-
-.piano-container {
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    text-align: center;
+    gap: 4px;
+    padding-top: 2%;
 }
 
 .piano {
     display: flex;
     aspect-ratio: calc(550 / 125);
     width: 800px;
-    max-width: 100%;
+    max-width: 98%;
     border-block-style: hidden;
     justify-content: center;
+    padding: 2% 0;
 }
 
 .selections {
-    width: 800px;
-    max-width: 100%;
+    text-align: center;
+    width: 100%;
+    gap: 15px;
+    display: flex
 }
 
-.start-button {
-    text-align: center;
-    padding-top: 10px;
-    width: 800px;
-    max-width: 100%
+
+.key.white.btn:hover {
+    background-color: #fff;
+    border-color: #000;
+}
+
+.key.black.btn:hover {
+    background-color: #000;
 }
 
 .key {
     border: 1px solid #000;
     cursor: pointer;
+    --bs-btn-padding-x: 0;
+    border-radius: 0;
 }
 
 .white {
@@ -60,4 +60,19 @@
     height: 65.625%;
     background-color: #000;
     z-index: 1;
+}
+
+.key-radios {
+    visibility: hidden;
+    padding-top: 10px;
+    width: 75%;
+    display: flex;
+    justify-content: center;
+}
+
+fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
 }
