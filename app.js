@@ -44,8 +44,6 @@ let currFrequencyOptions = Object.values(frequencies).sort(
 
 let currMidpoints = calculateMidpoints(frequencies);
 
-console.log({currMidpoints})
-
 keySelect.forEach((radio) => {
   radio.addEventListener("change", handleKeySelect);
 });
@@ -77,6 +75,8 @@ enableAudioSelect.forEach((radio) => {
 const getOctave = (note) => (note ? parseInt(note.match(/\d+/)[0], 10) : null);
 const getNoteName = (note) => (note ?? "").replace(/\d/, "");
 
+const pianoKeys = {};
+
 function createPiano() {
   const piano = document.getElementById("piano");
   const keys = Object.keys(frequencies);
@@ -97,6 +97,7 @@ function createPiano() {
     key.addEventListener("mouseup", () => {
       toggleHighlightKey(key, "end");
     });
+    pianoKeys[note] = key;
 
     piano.appendChild(key);
   });
@@ -120,14 +121,8 @@ const MIN_PLAY_INTERVAL = 600;
 
 function activateFromVoice(note) {
   const currTime = currAudioTime();
-  if (getVoiceActivatedNote()) {
-    var prevActiveKey = document.querySelector(
-      `.key[data-note='${getVoiceActivatedNote()}']`
-    );
-  }
-  if (note) {
-    var newActiveKey = document.querySelector(`.key[data-note='${note}']`);
-  }
+  const prevActiveKey = getVoiceActivatedNote() ? pianoKeys[getVoiceActivatedNote()] : null;
+    const newActiveKey = note ? pianoKeys[note] : null;
 
   if (prevActiveKey && prevActiveKey !== newActiveKey) {
     toggleHighlightKey(prevActiveKey, "end");
@@ -163,70 +158,70 @@ function activateFromVoice(note) {
 let isProcessing = false;
 let lastProcessedTime = 0;
 const PROCESS_INTERVAL = 75;
+let rafId = null;  // Declare at module scope where your other state variables are
 
 function getMicrophoneFrequency() {
-  if (!getIsListening()) {
-    return;
-  }
-  const now = Date.now();
-  if (now - lastProcessedTime < PROCESS_INTERVAL) {
-    return setTimeout(
-      getMicrophoneFrequency,
-      PROCESS_INTERVAL - (now - lastProcessedTime)
-    );
-  }
-
-  lastProcessedTime = now;
-
-  if (!isProcessing) {
-    isProcessing = true;
-
-    getAnalyserNode().getFloatTimeDomainData(getAudioInput());
-    const [pitch, clarity] = getDetector().findPitch(
-      getAudioInput(),
-      getAudioContext().sampleRate
-    );
-    if (clarity > 0.9 && pitch >= 70 && pitch <= 395) {
-      const matchedNoteIdx = detectFrequency(
-        pitch,
-        currMidpoints
-      );
-      var newNote = currNoteOptions[matchedNoteIdx];
+    if (!getIsListening()) {
+        cancelAnimationFrame(rafId);
+        rafId = null;  // Clear the ID
+        return;
     }
 
-    if (
-      lastPlayedNote === newNote &&
-      currAudioTime() - lastPlayedTime >= MIN_PLAY_INTERVAL
-    ) {
-      lastPlayedNote = null;
+    const now = Date.now();
+    if (now - lastProcessedTime >= PROCESS_INTERVAL) {
+        lastProcessedTime = now;
+
+        getAnalyserNode().getFloatTimeDomainData(getAudioInput());
+        const [pitch, clarity] = getDetector().findPitch(
+            getAudioInput(),
+            getAudioContext().sampleRate
+        );
+
+        if (clarity > 0.9 && pitch >= 70 && pitch <= 395) {
+            const matchedNoteIdx = detectFrequency(
+                pitch,
+                currMidpoints
+            );
+            var newNote = currNoteOptions[matchedNoteIdx];
+
+            if (lastPlayedNote === newNote &&
+                currAudioTime() - lastPlayedTime >= MIN_PLAY_INTERVAL) {
+                lastPlayedNote = null;
+            }
+
+            if ((newNote || getVoiceActivatedNote()) && lastPlayedNote !== newNote) {
+                activateFromVoice(newNote);
+            }
+        }
     }
 
-    if ((newNote || getVoiceActivatedNote()) && lastPlayedNote !== newNote) {
-      activateFromVoice(newNote);
-    }
-
-    setTimeout(() => {
-      isProcessing = false;
-      getMicrophoneFrequency();
-    }, PROCESS_INTERVAL);
-  }
+    rafId = requestAnimationFrame(getMicrophoneFrequency);
 }
 
 const listenButton = document.getElementById("start-button");
 
 listenButton.addEventListener("click", async () => {
-  if (!getIsListening()) {
-    listenButton.textContent = "Stop";
-    if (getOscillator()) {
-      disconnect();
-      listenButton.textContent = "Start";
+    try {
+        if (!getIsListening()) {
+            // Remove the oscillator check - it's not needed here
+            listenButton.textContent = "Stop";
+            await initDetector();
+            rafId = requestAnimationFrame(getMicrophoneFrequency);
+        } else {
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+            disconnect();  // This will set isListening to false and update button text
+        }
+    } catch (error) {
+        console.error("Failed to initialize audio:", error);
+        if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+        }
+        disconnect();
     }
-    await initDetector();
-    getMicrophoneFrequency();
-  } else {
-    disconnect();
-    listenButton.textContent = "Start";
-  }
 });
 
 createPiano();
