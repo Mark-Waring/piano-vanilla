@@ -44,6 +44,8 @@ let currFrequencyOptions = Object.values(frequencies).sort(
 
 let currMidpoints = calculateMidpoints(frequencies);
 
+console.log({currMidpoints})
+
 keySelect.forEach((radio) => {
   radio.addEventListener("change", handleKeySelect);
 });
@@ -186,7 +188,6 @@ function getMicrophoneFrequency() {
     );
     if (clarity > 0.9 && pitch >= 70 && pitch <= 395) {
       const matchedNoteIdx = detectFrequency(
-        currFrequencyOptions,
         pitch,
         currMidpoints
       );
