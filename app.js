@@ -10,7 +10,7 @@ const {
   getAudioContext,
   getAudioInput,
   getDetector,
-  getOscillator,
+  sleep,
   getIsListening,
   getAnalyserNode,
   getVoiceActivatedNote,
@@ -121,8 +121,10 @@ const MIN_PLAY_INTERVAL = 600;
 
 function activateFromVoice(note) {
   const currTime = currAudioTime();
-  const prevActiveKey = getVoiceActivatedNote() ? pianoKeys[getVoiceActivatedNote()] : null;
-    const newActiveKey = note ? pianoKeys[note] : null;
+  const prevActiveKey = getVoiceActivatedNote()
+    ? pianoKeys[getVoiceActivatedNote()]
+    : null;
+  const newActiveKey = note ? pianoKeys[note] : null;
 
   if (prevActiveKey && prevActiveKey !== newActiveKey) {
     toggleHighlightKey(prevActiveKey, "end");
@@ -155,73 +157,109 @@ function activateFromVoice(note) {
   }
 }
 
-let isProcessing = false;
 let lastProcessedTime = 0;
 const PROCESS_INTERVAL = 75;
-let rafId = null;  // Declare at module scope where your other state variables are
+let rafId = null;
+
+let lastActivityTime = Date.now();
+const INACTIVITY_TIMEOUT = 12000;
+const SLEEP_TIMEOUT = 6000;
 
 function getMicrophoneFrequency() {
-    if (!getIsListening()) {
-        cancelAnimationFrame(rafId);
-        rafId = null;  // Clear the ID
-        return;
+  if (!getIsListening()) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+    return;
+  }
+
+  const now = Date.now();
+
+  if (now - lastActivityTime > INACTIVITY_TIMEOUT) {
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
     }
+    disconnect();
+    return;
+  } else if (now - lastActivityTime > SLEEP_TIMEOUT) {
+    sleep();
+  }
 
-    const now = Date.now();
-    if (now - lastProcessedTime >= PROCESS_INTERVAL) {
-        lastProcessedTime = now;
+  if (now - lastProcessedTime >= PROCESS_INTERVAL) {
+    lastProcessedTime = now;
 
-        getAnalyserNode().getFloatTimeDomainData(getAudioInput());
-        const [pitch, clarity] = getDetector().findPitch(
-            getAudioInput(),
-            getAudioContext().sampleRate
-        );
+    getAnalyserNode().getFloatTimeDomainData(getAudioInput());
+    const [pitch, clarity] = getDetector().findPitch(
+      getAudioInput(),
+      getAudioContext().sampleRate
+    );
 
-        if (clarity > 0.9 && pitch >= 70 && pitch <= 395) {
-            const matchedNoteIdx = detectFrequency(
-                pitch,
-                currMidpoints
-            );
-            var newNote = currNoteOptions[matchedNoteIdx];
+    if (clarity > 0.9 && pitch >= 70 && pitch <= 395) {
+      lastActivityTime = now; // Reset inactivity timer when we detect a valid pitch
+      const matchedNoteIdx = detectFrequency(pitch, currMidpoints);
+      var newNote = currNoteOptions[matchedNoteIdx];
 
-            if (lastPlayedNote === newNote &&
-                currAudioTime() - lastPlayedTime >= MIN_PLAY_INTERVAL) {
-                lastPlayedNote = null;
-            }
+      if (
+        lastPlayedNote === newNote &&
+        currAudioTime() - lastPlayedTime >= MIN_PLAY_INTERVAL
+      ) {
+        lastPlayedNote = null;
+      }
 
-            if ((newNote || getVoiceActivatedNote()) && lastPlayedNote !== newNote) {
-                activateFromVoice(newNote);
-            }
-        }
+      if ((newNote || getVoiceActivatedNote()) && lastPlayedNote !== newNote) {
+        activateFromVoice(newNote);
+      }
+    } else {
+      if (getVoiceActivatedNote()) {
+        activateFromVoice(null);
+      }
     }
+  }
 
-    rafId = requestAnimationFrame(getMicrophoneFrequency);
+  rafId = requestAnimationFrame(getMicrophoneFrequency);
 }
 
 const listenButton = document.getElementById("start-button");
 
 listenButton.addEventListener("click", async () => {
-    try {
-        if (!getIsListening()) {
-            // Remove the oscillator check - it's not needed here
-            listenButton.textContent = "Stop";
-            await initDetector();
-            rafId = requestAnimationFrame(getMicrophoneFrequency);
-        } else {
-            if (rafId) {
-                cancelAnimationFrame(rafId);
-                rafId = null;
-            }
-            disconnect();  // This will set isListening to false and update button text
-        }
-    } catch (error) {
-        console.error("Failed to initialize audio:", error);
-        if (rafId) {
-            cancelAnimationFrame(rafId);
-            rafId = null;
-        }
-        disconnect();
+  try {
+    if (!getIsListening()) {
+      listenButton.textContent = "Stop";
+      await initDetector();
+      lastActivityTime = Date.now(); // Reset activity timer when starting
+      rafId = requestAnimationFrame(getMicrophoneFrequency);
+    } else {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      disconnect();
     }
+  } catch (error) {
+    console.error("Failed to initialize audio:", error);
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    disconnect();
+  }
 });
+
+function cleanup() {
+  if (rafId) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+  keySelect.forEach((radio) => {
+    radio.removeEventListener("change", handleKeySelect);
+  });
+  enableAudioSelect.forEach((radio) => {
+    radio.removeEventListener("change", handler);
+  });
+  disconnect();
+}
+
+// Add event listener for page unload
+window.addEventListener("unload", cleanup);
 
 createPiano();

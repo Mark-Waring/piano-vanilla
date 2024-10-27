@@ -113,18 +113,18 @@ export function createAudioContext() {
 
   function resetTimeout() {
     if (disconnectId) {
-        clearTimeout(disconnectId);
+      clearTimeout(disconnectId);
     }
 
     if (sleepId) {
-        clearTimeout(sleepId);
+      clearTimeout(sleepId);
     }
 
     if (!isListening) {
-        disconnectId = setTimeout(disconnect, 12000);
-        sleepId = setTimeout(sleep, 6000);
+      disconnectId = setTimeout(disconnect, 12000);
+      sleepId = setTimeout(sleep, 6000);
     }
-}
+  }
 
   function sleep() {
     if (oscillator) {
@@ -218,5 +218,6 @@ export function createAudioContext() {
     playTone,
     resetTimeout,
     disconnect,
+    sleep,
   };
 }
