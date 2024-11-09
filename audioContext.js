@@ -120,7 +120,7 @@ export function createAudioContext() {
       clearTimeout(sleepId);
     }
 
-    if (!isListening) {
+    if (isListening) {
       disconnectId = setTimeout(disconnect, 12000);
       sleepId = setTimeout(sleep, 6000);
     }
@@ -194,7 +194,6 @@ export function createAudioContext() {
       audioDetector.minVolumeDecibels = -40;
 
       audioInput = new Float32Array(analyserNode.fftSize);
-      resetTimeout();
     } catch (error) {
       console.error(
         "Error accessing microphone or setting up analyser node:",
