@@ -120,7 +120,7 @@ export function createAudioContext() {
       clearTimeout(sleepId);
     }
 
-    if (isListening) {
+    if (!isListening) {
       disconnectId = setTimeout(disconnect, 12000);
       sleepId = setTimeout(sleep, 6000);
     }

@@ -1,10 +1,13 @@
 import { createAudioContext } from "./audioContext";
+import { chromaticColors } from "./colorMatch";
 import {
   frequencies,
   calculateMidpoints,
   filterFrequenciesByKey,
 } from "./frequencies";
 import { detectFrequency } from "./matchFrequency";
+
+console.log({ chromaticColors });
 
 const {
   getAudioContext,
@@ -23,7 +26,10 @@ const {
   disconnect,
 } = createAudioContext();
 
+let lastActivityTime = Date.now();
+
 const keySelect = document.querySelectorAll('input[name="key-select"]');
+const body = document.querySelector("#root");
 
 document.querySelector("#scales").addEventListener("change", (event) => {
   const checked = event.target.checked;
@@ -92,6 +98,7 @@ function createPiano() {
     key.id = note.toString();
     key.addEventListener("mousedown", () => {
       toggleHighlightKey(key, "start");
+      lastActivityTime = Date.now();
       playTone(frequencies[note])();
     });
     key.addEventListener("mouseup", () => {
@@ -106,7 +113,8 @@ function createPiano() {
 function toggleHighlightKey(key, marker) {
   if (getIsListening()) {
     if (marker === "start") {
-      key.style.backgroundColor = "red";
+      const note = getNoteName(key.dataset.note);
+      key.style.backgroundColor = chromaticColors[note];
     } else if (marker === "end") {
       key.style.backgroundColor = key.classList.contains("black")
         ? "black"
@@ -143,12 +151,11 @@ function activateFromVoice(note) {
       lastPlayedNote === note && currTime - lastPlayedTime < MIN_PLAY_INTERVAL;
     if (!isTempNote && !holdNote) {
       toggleHighlightKey(newActiveKey, "start");
+      resetTimeout();
       lastPlayedNote = note;
       lastPlayedTime = currTime;
       if (getIsAudioEnabled()) {
         playTone(frequencies[note])();
-      } else {
-        resetTimeout();
       }
     } else if (!holdNote) {
       newActiveKey.style.backgroundColor = "#ccc";
@@ -161,7 +168,6 @@ let lastProcessedTime = 0;
 const PROCESS_INTERVAL = 75;
 let rafId = null;
 
-let lastActivityTime = Date.now();
 const INACTIVITY_TIMEOUT = 12000;
 const SLEEP_TIMEOUT = 6000;
 
@@ -195,7 +201,7 @@ function getMicrophoneFrequency() {
     );
 
     if (clarity > 0.9 && pitch >= 70 && pitch <= 395) {
-      lastActivityTime = now; // Reset inactivity timer when we detect a valid pitch
+      lastActivityTime = now;
       const matchedNoteIdx = detectFrequency(pitch, currMidpoints);
       var newNote = currNoteOptions[matchedNoteIdx];
 
@@ -226,7 +232,7 @@ listenButton.addEventListener("click", async () => {
     if (!getIsListening()) {
       listenButton.textContent = "Stop";
       await initDetector();
-      lastActivityTime = Date.now(); // Reset activity timer when starting
+      lastActivityTime = Date.now();
       rafId = requestAnimationFrame(getMicrophoneFrequency);
     } else {
       if (rafId) {
